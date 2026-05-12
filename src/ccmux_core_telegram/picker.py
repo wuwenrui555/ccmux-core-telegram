@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import Literal
 
@@ -197,3 +198,79 @@ async def on_pick_callback(update, context) -> None:
         group_chat_id=group_chat_id,
     )
     await query.edit_message_text(f"✅ Bound to `{tmux_session}`.")
+
+
+async def on_steal_callback(update, context) -> None:
+    """Transfer an already-bound session from its current topic to this one."""
+    from . import config, runtime
+
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id not in config.allowed_users():
+        return
+
+    tmux_session = query.data[len(STEAL_PREFIX) :]
+    new_topic_id = query.message.message_thread_id
+    new_group_chat_id = query.message.chat.id
+
+    state = runtime.get_state(context.application)
+    old = binding.find_by_tmux_session(tmux_session)
+    if old is None:
+        # No longer bound (race) — fall back to ordinary pick
+        update.callback_query.data = f"{PICK_PREFIX}{tmux_session}"
+        await on_pick_callback(update, context)
+        return
+    old_topic_id, old_group_chat_id = old
+
+    if old_topic_id == new_topic_id:
+        await query.edit_message_text(
+            f"✅ Already bound to `{tmux_session}`. No change."
+        )
+        return
+
+    # 1. Notify old topic before cancelling its task
+    with contextlib.suppress(Exception):
+        await context.application.bot.send_message(
+            chat_id=old_group_chat_id,
+            message_thread_id=old_topic_id,
+            text=(
+                f"🔄 Session `{tmux_session}` was claimed by another topic. "
+                f"This topic is no longer connected. /start to rebind."
+            ),
+        )
+
+    # 2. Cancel old task (finally clears state.live_tasks/handles)
+    old_task = state.live_tasks.get(old_topic_id)
+    if old_task is not None:
+        old_task.cancel()
+
+    # 3. Remove old entry from disk
+    binding.remove(old_topic_id)
+
+    # 4. If new topic had a prior entry, remove it
+    if binding.get(new_topic_id) is not None:
+        binding.remove(new_topic_id)
+
+    # 5. Re-validate session is still live, write + start
+    core = _load_core_bindings()
+    c = core.get(tmux_session)
+    if c is None or c.get("current_session_id") is None:
+        await query.edit_message_text(f"'{tmux_session}' no longer live. /start again.")
+        return
+    binding.put(new_topic_id, tmux_session, new_group_chat_id)
+    await runtime.start_binding(
+        context.application,
+        topic_id=new_topic_id,
+        tmux_session=tmux_session,
+        pane_id=c["pane_id"],
+        group_chat_id=new_group_chat_id,
+    )
+    await query.edit_message_text(
+        f"✅ Bound to `{tmux_session}` (stolen from topic {old_topic_id})."
+    )
+    logger.info(
+        "steal: tmux=%s old_topic=%d new_topic=%d",
+        tmux_session,
+        old_topic_id,
+        new_topic_id,
+    )
