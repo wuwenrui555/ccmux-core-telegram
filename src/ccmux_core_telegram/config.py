@@ -7,6 +7,7 @@ match the ccmux-core family convention (no python-dotenv dependency).
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -42,3 +43,116 @@ def _parse_env_file(path: Path) -> dict[str, str]:
             value = value[1:-1]
         out[key] = value
     return out
+
+
+class ConfigError(RuntimeError):
+    """Raised when required configuration is missing or malformed."""
+
+
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+
+DEFAULT_DIR = "~/.ccmux-core-telegram"
+DEFAULT_LOG_LEVEL = "DEBUG"
+DEFAULT_FORWARD_TOOLS = True
+DEFAULT_TOOL_ALLOWLIST = frozenset({"Skill"})
+DEFAULT_BOOTSTRAP_RETRIES = -1
+
+
+# ---------------------------------------------------------------------------
+# Path accessors
+# ---------------------------------------------------------------------------
+
+
+def ccmux_core_telegram_dir() -> Path:
+    raw = os.environ.get("CCMUX_CORE_TELEGRAM_DIR", DEFAULT_DIR)
+    return Path(raw).expanduser()
+
+
+def topic_bindings_path() -> Path:
+    return ccmux_core_telegram_dir() / "topic_bindings.json"
+
+
+def ccmux_core_bindings_path() -> Path:
+    return ccmux_core_telegram_dir() / "ccmux-core" / "bindings.json"
+
+
+def settings_env_path() -> Path:
+    return ccmux_core_telegram_dir() / "settings.env"
+
+
+def dotenv_path() -> Path:
+    return ccmux_core_telegram_dir() / ".env"
+
+
+def log_file() -> Path:
+    raw = os.environ.get("CCMUX_CORE_TELEGRAM_LOG_FILE")
+    if raw:
+        return Path(raw).expanduser()
+    return ccmux_core_telegram_dir() / "ccmux-core-telegram.log"
+
+
+# ---------------------------------------------------------------------------
+# Value accessors
+# ---------------------------------------------------------------------------
+
+
+def bot_token() -> str:
+    raw = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not raw:
+        raise ConfigError("TELEGRAM_BOT_TOKEN required (set in .env)")
+    return raw
+
+
+def allowed_users() -> frozenset[int]:
+    raw = os.environ.get("CCMUX_CORE_TELEGRAM_ALLOWED_USERS", "")
+    if not raw:
+        raise ConfigError(
+            "CCMUX_CORE_TELEGRAM_ALLOWED_USERS required (comma-separated Telegram user IDs)"
+        )
+    try:
+        return frozenset(int(s.strip()) for s in raw.split(",") if s.strip())
+    except ValueError as e:
+        raise ConfigError(
+            f"CCMUX_CORE_TELEGRAM_ALLOWED_USERS contains non-numeric: {e}"
+        ) from e
+
+
+def forward_tools() -> bool:
+    raw = os.environ.get("CCMUX_CORE_TELEGRAM_FORWARD_TOOLS")
+    if raw is None:
+        return DEFAULT_FORWARD_TOOLS
+    return raw.lower() != "false"
+
+
+def tool_allowlist() -> frozenset[str]:
+    raw = os.environ.get("CCMUX_CORE_TELEGRAM_TOOL_ALLOWLIST")
+    if raw is None:
+        return DEFAULT_TOOL_ALLOWLIST
+    names = {s.strip() for s in raw.split(",") if s.strip()}
+    return frozenset(names) if names else DEFAULT_TOOL_ALLOWLIST
+
+
+def log_level() -> str:
+    return os.environ.get("CCMUX_CORE_TELEGRAM_LOG_LEVEL", DEFAULT_LOG_LEVEL)
+
+
+def bootstrap_retries() -> int:
+    raw = os.environ.get("CCMUX_CORE_TELEGRAM_BOOTSTRAP_RETRIES")
+    if raw is None or not raw.strip():
+        return DEFAULT_BOOTSTRAP_RETRIES
+    try:
+        return int(raw)
+    except ValueError:
+        return DEFAULT_BOOTSTRAP_RETRIES
+
+
+def validate_required_env() -> None:
+    """Raise ConfigError if any required env var is missing.
+
+    Reads (and discards) bot_token() and allowed_users() so a missing
+    value surfaces at startup, not at first use.
+    """
+    bot_token()
+    allowed_users()
