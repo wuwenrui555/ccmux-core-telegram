@@ -131,3 +131,29 @@ def _load_core_bindings() -> dict:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return {}
+
+
+async def on_filter_callback(update, context) -> None:
+    """Tab switch — re-render picker with new filter mode."""
+    from . import config
+
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id not in config.allowed_users():
+        return
+
+    mode_str = query.data[len(FILTER_PREFIX) :]
+    if mode_str not in ("all", "unbound", "bound"):
+        return
+    mode: FilterMode = mode_str  # type: ignore[assignment]
+
+    topic_id = query.message.message_thread_id
+    core = _load_core_bindings()
+    topic_bindings = binding.load_all()
+    text, kb = _build_picker(
+        core_bindings=core,
+        topic_bindings=topic_bindings,
+        filter_mode=mode,
+        current_topic_id=topic_id,
+    )
+    await query.edit_message_text(text, reply_markup=kb)
