@@ -8,17 +8,30 @@ import pytest
 
 from ccmux_core_telegram import config
 
+_DIRTY_VARS = (
+    "CCMUX_CORE_TELEGRAM_DIR",
+    "CCMUX_CORE_TELEGRAM_FORWARD_TOOLS",
+    "CCMUX_CORE_DIR",
+    "TELEGRAM_BOT_TOKEN",
+    "KEY_X",
+)
+
 
 @pytest.fixture(autouse=True)
-def _clean_env(monkeypatch) -> None:
-    """Strip relevant env vars before each test."""
-    for var in [
-        "CCMUX_CORE_TELEGRAM_DIR",
-        "CCMUX_CORE_TELEGRAM_FORWARD_TOOLS",
-        "CCMUX_CORE_DIR",
-        "TELEGRAM_BOT_TOKEN",
-    ]:
+def _clean_env(monkeypatch):
+    """Strip relevant env vars before AND after each test.
+
+    The loader tests call ``config._load_settings_env_files`` /
+    ``_load_dotenv_files`` which write to ``os.environ`` via
+    ``setdefault``. ``setdefault`` writes are NOT tracked by
+    monkeypatch, so without a post-test scrub the vars leak to
+    subsequent tests in the suite. Yield-then-pop ensures isolation.
+    """
+    for var in _DIRTY_VARS:
         monkeypatch.delenv(var, raising=False)
+    yield
+    for var in _DIRTY_VARS:
+        os.environ.pop(var, None)
 
 
 def test_load_settings_env_global(monkeypatch, tmp_path) -> None:

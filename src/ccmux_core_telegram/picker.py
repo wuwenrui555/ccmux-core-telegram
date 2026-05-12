@@ -185,10 +185,8 @@ async def on_pick_callback(update, context) -> None:
         )
         return
 
-    # If this topic was previously bound (e.g., Dead state), remove old entry
-    if binding.get(topic_id) is not None:
-        binding.remove(topic_id)
-
+    # binding.put overwrites by topic_id, so any prior (Dead-state) entry
+    # is replaced atomically. No separate remove needed.
     binding.put(topic_id, tmux_session, group_chat_id)
     await runtime.start_binding(
         context.application,
