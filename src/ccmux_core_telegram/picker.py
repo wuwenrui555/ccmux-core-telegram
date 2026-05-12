@@ -157,3 +157,43 @@ async def on_filter_callback(update, context) -> None:
         current_topic_id=topic_id,
     )
     await query.edit_message_text(text, reply_markup=kb)
+
+
+async def on_pick_callback(update, context) -> None:
+    """Bind the chosen unbound session to the current topic."""
+    from . import config, runtime
+
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id not in config.allowed_users():
+        return
+
+    tmux_session = query.data[len(PICK_PREFIX) :]
+    topic_id = query.message.message_thread_id
+    group_chat_id = query.message.chat.id
+
+    # Re-validate (picker render → click race window)
+    core = _load_core_bindings()
+    c = core.get(tmux_session)
+    if c is None or c.get("current_session_id") is None:
+        await query.edit_message_text(f"'{tmux_session}' no longer live. /start again.")
+        return
+    if binding.find_by_tmux_session(tmux_session) is not None:
+        await query.edit_message_text(
+            f"'{tmux_session}' was just bound elsewhere. /start again."
+        )
+        return
+
+    # If this topic was previously bound (e.g., Dead state), remove old entry
+    if binding.get(topic_id) is not None:
+        binding.remove(topic_id)
+
+    binding.put(topic_id, tmux_session, group_chat_id)
+    await runtime.start_binding(
+        context.application,
+        topic_id=topic_id,
+        tmux_session=tmux_session,
+        pane_id=c["pane_id"],
+        group_chat_id=group_chat_id,
+    )
+    await query.edit_message_text(f"✅ Bound to `{tmux_session}`.")
