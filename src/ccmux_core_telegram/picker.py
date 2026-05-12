@@ -7,6 +7,7 @@ from typing import Literal
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from . import binding
 from .binding import TopicBinding
 
 logger = logging.getLogger(__name__)
@@ -96,3 +97,37 @@ def _tab_row(active: FilterMode) -> list[InlineKeyboardButton]:
             label("🔒 已绑定", "bound"), callback_data=f"{FILTER_PREFIX}bound"
         ),
     ]
+
+
+async def on_start(update, context) -> None:
+    """Handle ``/start`` — always launch picker, regardless of current binding state."""
+    msg = update.message
+    if msg.message_thread_id is None:
+        await msg.reply_text("Use /start inside a forum topic.")
+        return
+    topic_id = msg.message_thread_id
+
+    core = _load_core_bindings()
+    topic_bindings = binding.load_all()
+    text, kb = _build_picker(
+        core_bindings=core,
+        topic_bindings=topic_bindings,
+        filter_mode="all",
+        current_topic_id=topic_id,
+    )
+    await msg.reply_text(text, reply_markup=kb)
+
+
+def _load_core_bindings() -> dict:
+    """Read ccmux-core's bindings.json. Returns {} on missing/malformed."""
+    import json
+
+    from . import config
+
+    path = config.ccmux_core_bindings_path()
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
