@@ -204,6 +204,18 @@ async def on_post_init(application) -> None:
         )
 
 
+async def on_post_shutdown(application) -> None:
+    """PTB post_shutdown hook: cancel all binding tasks, close tracker."""
+    state = get_state(application)
+    tasks = list(state.live_tasks.values())
+    for t in tasks:
+        t.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    if state.tracker is not None:
+        await state.tracker.__aexit__(None, None, None)
+
+
 def _load_core_bindings() -> dict:
     """Read ccmux-core's bindings.json. Returns {} if missing."""
     import json
