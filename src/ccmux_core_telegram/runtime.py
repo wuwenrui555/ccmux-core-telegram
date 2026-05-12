@@ -3,6 +3,7 @@
 Owns ``live_tasks`` / ``backend_handles`` / ``tracker`` inside a
 ``RuntimeState`` dataclass stored at ``application.bot_data["runtime"]``.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -55,20 +56,75 @@ async def _run_binding(
 ) -> None:
     """Per-binding task body. Pumps Backend.messages() → Telegram.
 
-    Outbound logic (forward filter, rate-limit handling) and Dead notice
-    are added in subsequent tasks; this stub keeps the test infrastructure
-    working before then.
+    On Backend Dead → send a death notice. On voluntary cancel
+    (task.cancel()) → suppress notice. On rate-limit exhaust → log
+    and send a placeholder.
     """
+    from telegram.error import RetryAfter
+
+    from . import render
+    from .config import forward_tools, tool_allowlist
+
+    bot = application.bot
     state = get_state(application)
     b: Backend | None = None
     try:
         async with Backend(tmux_session, pane_id) as b:
             state.backend_handles[topic_id] = b
-            async for _msg in b.messages():
-                pass  # Outbound forwarding added in Task 10
+            async for msg in b.messages():
+                if not _should_forward(msg, forward_tools(), tool_allowlist()):
+                    continue
+                text, parse_mode = render.format(msg)
+                try:
+                    await bot.send_message(
+                        chat_id=group_chat_id,
+                        message_thread_id=topic_id,
+                        text=text,
+                        parse_mode=parse_mode,
+                    )
+                    logger.debug(
+                        "outbound: topic=%d kind=%s",
+                        topic_id,
+                        type(msg).__name__,
+                    )
+                except RetryAfter:
+                    logger.warning(
+                        "rate-limit dropped: topic=%d kind=%s",
+                        topic_id,
+                        type(msg).__name__,
+                    )
+                    with contextlib.suppress(Exception):
+                        await bot.send_message(
+                            chat_id=group_chat_id,
+                            message_thread_id=topic_id,
+                            text="⚠️ dropped one message (rate limit)",
+                        )
     finally:
         state.backend_handles.pop(topic_id, None)
         state.live_tasks.pop(topic_id, None)
         if b is not None and isinstance(b.state, Dead):
             with contextlib.suppress(Exception):
-                pass  # Dead notice added in Task 10
+                detail = f": {b.state.detail}" if b.state.detail else ""
+                await bot.send_message(
+                    chat_id=group_chat_id,
+                    message_thread_id=topic_id,
+                    text=f"🪦 session ended ({b.state.reason}{detail})",
+                )
+            logger.info(
+                "binding ended: topic=%d reason=%s",
+                topic_id,
+                b.state.reason,
+            )
+
+
+def _should_forward(
+    msg, forward_tools_enabled: bool, allowlist: frozenset[str]
+) -> bool:
+    """Apply FORWARD_TOOLS + TOOL_ALLOWLIST filter to outbound messages."""
+    from ccmux_core.message import ToolCall, ToolResult
+
+    if not isinstance(msg, (ToolCall, ToolResult)):
+        return True
+    if forward_tools_enabled:
+        return True
+    return msg.tool_name in allowlist
