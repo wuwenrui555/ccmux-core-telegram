@@ -156,3 +156,61 @@ def validate_required_env() -> None:
     """
     bot_token()
     allowed_users()
+
+
+# ---------------------------------------------------------------------------
+# File loaders + facade setdefault (run at import time, see bottom)
+# ---------------------------------------------------------------------------
+
+_SETTINGS_ENV_FILENAME = "settings.env"
+_DOTENV_FILENAME = ".env"
+
+
+def _load_settings_env_files() -> None:
+    """Source settings.env into os.environ via setdefault.
+
+    Order (later wins among files; shell exports always win via
+    ``setdefault``):
+      1. ``./settings.env`` (cwd) — loaded first, so its values take
+         precedence over global since later setdefault is a no-op.
+      2. ``$CCMUX_CORE_TELEGRAM_DIR/settings.env`` (global)
+    """
+    for path in [Path(_SETTINGS_ENV_FILENAME), settings_env_path()]:
+        try:
+            if not path.is_file():
+                continue
+        except OSError:
+            continue
+        for key, val in _parse_env_file(path).items():
+            os.environ.setdefault(key, val)
+
+
+def _load_dotenv_files() -> None:
+    """Source .env into os.environ via setdefault. Same order as settings.env."""
+    for path in [Path(_DOTENV_FILENAME), dotenv_path()]:
+        try:
+            if not path.is_file():
+                continue
+        except OSError:
+            continue
+        for key, val in _parse_env_file(path).items():
+            os.environ.setdefault(key, val)
+
+
+def _setdefault_upstream_dir() -> None:
+    """Redirect ``CCMUX_CORE_DIR`` into cct's state tree (subdir).
+
+    ``setdefault`` semantics: a shell-exported ``CCMUX_CORE_DIR`` still
+    wins, giving power users an escape hatch to share ``~/.ccmux-core/``
+    across multiple consumers.
+    """
+    os.environ.setdefault(
+        "CCMUX_CORE_DIR",
+        str(ccmux_core_telegram_dir() / "ccmux-core"),
+    )
+
+
+# Module-import side effect: load files + facade setdefault.
+_load_settings_env_files()
+_load_dotenv_files()
+_setdefault_upstream_dir()
