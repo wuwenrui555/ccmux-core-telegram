@@ -128,3 +128,30 @@ def _should_forward(
     if forward_tools_enabled:
         return True
     return msg.tool_name in allowlist
+
+
+async def on_inbound_text(update, context) -> None:
+    """Route inbound text to the bound Backend.
+
+    - In a topic with a live backend → ``b.send_prompt(text)``
+    - In a topic that is bound but has no live backend (Dead) → reply hint
+    - In an unbound topic (or non-topic) → silent
+    """
+    from . import binding
+
+    msg = update.message
+    if msg is None or msg.message_thread_id is None:
+        return
+    topic_id = msg.message_thread_id
+    state = get_state(context.application)
+
+    if topic_id in state.backend_handles:
+        b = state.backend_handles[topic_id]
+        await b.send_prompt(msg.text)
+        logger.debug("inbound: topic=%d text=%r", topic_id, msg.text)
+        return
+
+    if binding.get(topic_id) is None:
+        return  # unbound, silent
+
+    await msg.reply_text("Session is dead. /start to rebind to a different session.")
