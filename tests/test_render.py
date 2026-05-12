@@ -1,4 +1,5 @@
 """Tests for L1 Message → Telegram text rendering."""
+
 from __future__ import annotations
 
 from ccmux_core.message import (

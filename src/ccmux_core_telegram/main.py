@@ -9,6 +9,7 @@ Sequence:
 5. Wire ``post_init`` / ``post_shutdown`` to runtime hooks.
 6. ``app.run_polling(...)``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,10 +20,12 @@ from . import config, handler, runtime
 
 logger = logging.getLogger(__name__)
 
-SENSITIVE_VARS: frozenset[str] = frozenset({
-    "TELEGRAM_BOT_TOKEN",
-    "CCMUX_CORE_TELEGRAM_ALLOWED_USERS",
-})
+SENSITIVE_VARS: frozenset[str] = frozenset(
+    {
+        "TELEGRAM_BOT_TOKEN",
+        "CCMUX_CORE_TELEGRAM_ALLOWED_USERS",
+    }
+)
 
 
 def setup_logging() -> None:
@@ -43,9 +46,9 @@ def setup_logging() -> None:
     log_file.parent.mkdir(parents=True, exist_ok=True)
     fh = logging.FileHandler(log_file, encoding="utf-8")
     fh.setLevel(log_level)
-    fh.setFormatter(logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    ))
+    fh.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
     logging.getLogger().addHandler(fh)
     logger.info("Logging to %s (level=%s)", log_file, log_level_str)
 

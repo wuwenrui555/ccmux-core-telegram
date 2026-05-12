@@ -8,6 +8,7 @@ import runtime``), causing later tests to bind ``Backend`` against a
 stale runtime module and silently fall back to the real ccmux-core
 Backend — which then hangs.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

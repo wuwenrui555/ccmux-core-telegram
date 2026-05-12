@@ -7,11 +7,11 @@ module-level ``_load_settings_env_files`` / ``_load_dotenv_files`` /
 before ``ccmux_core_telegram``, the setdefault is too late — but cct's
 own tests always go through the package, so this is acceptable for MVP.
 """
+
 from __future__ import annotations
 
 # Side-effect import: loads settings.env/.env, setdefaults CCMUX_CORE_DIR.
 from . import config as _config  # noqa: F401
-
 from ._version import __version__
 
 __all__ = ["__version__"]

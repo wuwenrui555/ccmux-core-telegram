@@ -1,14 +1,13 @@
 """Tests for runtime.on_post_init startup binding recovery."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import pytest
 from ccmux_core.state import Idle
 
 from ccmux_core_telegram import binding, runtime
-from ccmux_core_telegram.runtime import RuntimeState
 
 
 def _write_core_bindings(state_dir: Path, data: dict) -> None:
@@ -23,17 +22,20 @@ async def test_post_init_starts_tasks_for_live_bindings(
 ) -> None:
     # cct has 1 binding; ccmux-core says the session is live
     binding.put(topic_id=42, tmux_session="ccmux", group_chat_id=-100)
-    _write_core_bindings(state_dir, {
-        "ccmux": {
-            "pane_id": "%0",
-            "window_id": "@0",
-            "current_session_id": "sid-1",
-            "session_id_history": ["sid-1"],
-            "first_seen_at": "2026-05-12T00:00:00Z",
-            "last_event_at": "2026-05-12T00:00:00Z",
-            "ended_at": None,
-        }
-    })
+    _write_core_bindings(
+        state_dir,
+        {
+            "ccmux": {
+                "pane_id": "%0",
+                "window_id": "@0",
+                "current_session_id": "sid-1",
+                "session_id_history": ["sid-1"],
+                "first_seen_at": "2026-05-12T00:00:00Z",
+                "last_event_at": "2026-05-12T00:00:00Z",
+                "ended_at": None,
+            }
+        },
+    )
 
     fake = fake_backend(msgs=[], state=Idle(reason="stop"))
     monkeypatch.setattr(
@@ -81,17 +83,20 @@ async def test_post_init_skips_ended_sessions(
     monkeypatch, state_dir, fake_application, mock_bot
 ) -> None:
     binding.put(topic_id=42, tmux_session="ccmux", group_chat_id=-100)
-    _write_core_bindings(state_dir, {
-        "ccmux": {
-            "pane_id": "%0",
-            "window_id": "@0",
-            "current_session_id": None,  # ended
-            "session_id_history": ["sid-1"],
-            "first_seen_at": "2026-05-12T00:00:00Z",
-            "last_event_at": "2026-05-12T00:00:00Z",
-            "ended_at": "2026-05-12T01:00:00Z",
-        }
-    })
+    _write_core_bindings(
+        state_dir,
+        {
+            "ccmux": {
+                "pane_id": "%0",
+                "window_id": "@0",
+                "current_session_id": None,  # ended
+                "session_id_history": ["sid-1"],
+                "first_seen_at": "2026-05-12T00:00:00Z",
+                "last_event_at": "2026-05-12T00:00:00Z",
+                "ended_at": "2026-05-12T01:00:00Z",
+            }
+        },
+    )
 
     monkeypatch.setattr(
         "ccmux_core_telegram.runtime.BindingsTracker",
@@ -107,11 +112,14 @@ async def test_post_init_skips_ended_sessions(
 
 class _FakeTracker:
     """Stand-in for ccmux_core.bindings.BindingsTracker."""
+
     def __init__(self, *a, **kw) -> None:
         self.entered = False
         self.exited = False
-    async def __aenter__(self) -> "_FakeTracker":
+
+    async def __aenter__(self) -> _FakeTracker:
         self.entered = True
         return self
+
     async def __aexit__(self, *exc) -> None:
         self.exited = True

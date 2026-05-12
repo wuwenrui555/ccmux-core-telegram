@@ -1,27 +1,28 @@
 """Tests for runtime.on_post_shutdown teardown."""
+
 from __future__ import annotations
 
 import asyncio
-
-import pytest
 
 from ccmux_core_telegram import runtime
 from ccmux_core_telegram.runtime import RuntimeState
 
 
-async def test_post_shutdown_cancels_all_tasks(
-    monkeypatch, fake_application
-) -> None:
+async def test_post_shutdown_cancels_all_tasks(monkeypatch, fake_application) -> None:
     class _SlowBackend:
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *exc):
             return None
+
         async def messages(self):
             await asyncio.sleep(1000)  # never yields
             yield  # unreachable
+
         async def send_prompt(self, text):
             pass
+
         @property
         def state(self):
             return None
@@ -60,8 +61,10 @@ class _FakeTracker:
     def __init__(self):
         self.entered = False
         self.exited = False
+
     async def __aenter__(self):
         self.entered = True
         return self
+
     async def __aexit__(self, *exc):
         self.exited = True

@@ -1,4 +1,5 @@
 """Tests for main.py — setup_logging + scrub_sensitive_env."""
+
 from __future__ import annotations
 
 import logging
@@ -21,9 +22,7 @@ def test_setup_logging_creates_file_handler(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("CCMUX_CORE_TELEGRAM_LOG_FILE", str(log_path))
     main.setup_logging()
     root = logging.getLogger()
-    file_handlers = [
-        h for h in root.handlers if isinstance(h, logging.FileHandler)
-    ]
+    file_handlers = [h for h in root.handlers if isinstance(h, logging.FileHandler)]
     assert any(Path(h.baseFilename) == log_path for h in file_handlers)
 
 

@@ -188,7 +188,8 @@ async def on_post_init(application) -> None:
                 )
             logger.warning(
                 "stale binding skipped: topic=%d tmux=%s",
-                topic_id, b.tmux_session,
+                topic_id,
+                b.tmux_session,
             )
             continue
         await start_binding(
@@ -200,7 +201,9 @@ async def on_post_init(application) -> None:
         )
         logger.info(
             "started binding: topic=%d tmux=%s pane=%s",
-            topic_id, b.tmux_session, c["pane_id"],
+            topic_id,
+            b.tmux_session,
+            c["pane_id"],
         )
 
 

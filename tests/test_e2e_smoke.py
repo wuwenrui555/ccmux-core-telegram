@@ -49,9 +49,12 @@ async def test_full_boot_and_inbound_dispatch(
     monkeypatch.setattr("ccmux_core_telegram.runtime.BindingsTracker", _StubTracker)
 
     binding.put(topic_id=42, tmux_session="ccmux", group_chat_id=-100)
-    _write_core(state_dir, {
-        "ccmux": {"current_session_id": "sid", "pane_id": "%0"},
-    })
+    _write_core(
+        state_dir,
+        {
+            "ccmux": {"current_session_id": "sid", "pane_id": "%0"},
+        },
+    )
 
     app = handler.build_application(token="123:fake", allowed_users=frozenset({1}))
     await runtime.on_post_init(app)

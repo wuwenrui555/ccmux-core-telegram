@@ -1,4 +1,5 @@
 """Tests for RuntimeState dataclass + start_binding registration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -20,7 +21,9 @@ def test_get_state_reads_from_bot_data(fake_application) -> None:
     assert get_state(fake_application) is s
 
 
-async def test_start_binding_registers_task(monkeypatch, fake_application, fake_backend) -> None:
+async def test_start_binding_registers_task(
+    monkeypatch, fake_application, fake_backend
+) -> None:
     """start_binding creates an asyncio task and stores it in live_tasks."""
     fake = fake_backend(msgs=[])
     monkeypatch.setattr(

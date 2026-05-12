@@ -3,6 +3,7 @@
 Pure functions. No PTB types here — we return ``(text, parse_mode)``
 tuples that the caller passes to ``bot.send_message``.
 """
+
 from __future__ import annotations
 
 import json
