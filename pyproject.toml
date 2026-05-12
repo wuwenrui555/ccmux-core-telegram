@@ -1,0 +1,53 @@
+[project]
+name = "ccmux-core-telegram"
+version = "0.1.0"
+description = "Telegram bridge over ccmux-core L2 API"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+keywords = ["claude-code", "ccmux", "telegram", "tmux"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Communications :: Chat",
+]
+dependencies = [
+    "ccmux-core>=0.3.0",
+    "python-telegram-bot[rate-limiter]>=21.0,<22",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8.0",
+]
+
+[tool.uv.sources]
+ccmux-core = { path = "../ccmux-core", editable = true }
+
+[project.scripts]
+ccmux-core-telegram = "ccmux_core_telegram.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ccmux_core_telegram"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
