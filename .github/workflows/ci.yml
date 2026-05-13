@@ -25,7 +25,7 @@ jobs:
         run: |
           pip install git+https://github.com/wuwenrui555/claude-tap.git@v0.2.1
           pip install git+https://github.com/wuwenrui555/ccmux-spinner.git@v0.2.1
-          pip install git+https://github.com/wuwenrui555/ccmux-core.git@v0.3.0
+          pip install git+https://github.com/wuwenrui555/ccmux-core.git@v0.3.1
       - name: Install package + dev deps
         run: pip install -e '.[dev]'
       - name: Run tests

@@ -14,7 +14,7 @@ classifiers = [
     "Topic :: Communications :: Chat",
 ]
 dependencies = [
-    "ccmux-core>=0.3.0",
+    "ccmux-core>=0.3.1",
     "python-telegram-bot[rate-limiter]>=21.0,<22",
 ]
 
