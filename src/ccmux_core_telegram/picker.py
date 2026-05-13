@@ -188,7 +188,8 @@ async def on_pick_callback(update, context) -> None:
     if c is None or c.get("current_session_id") is None:
         await query.edit_message_text(f"'{tmux_session}' no longer live. /start again.")
         return
-    if binding.find_by_tmux_session(tmux_session) is not None:
+    owner = binding.find_by_tmux_session(tmux_session)
+    if owner is not None and owner[0] != topic_id:
         await query.edit_message_text(
             f"'{tmux_session}' was just bound elsewhere. /start again."
         )
