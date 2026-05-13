@@ -1,6 +1,6 @@
 [project]
 name = "ccmux-core-telegram"
-version = "0.1.0"
+version = "0.1.1"
 description = "Telegram bridge over ccmux-core L2 API"
 readme = "README.md"
 requires-python = ">=3.11"
