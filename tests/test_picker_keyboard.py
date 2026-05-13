@@ -110,3 +110,68 @@ def test_skips_ended_sessions() -> None:
     callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
     assert "pick:live" in callbacks
     assert "pick:ended" not in callbacks
+
+
+def test_build_picker_header_live_binding() -> None:
+    """When current topic is bound to a live session, header is prepended."""
+    from ccmux_core_telegram.binding import TopicBinding
+
+    core = {
+        "ccmux": {"current_session_id": "sid", "pane_id": "%0"},
+    }
+    topic_bindings = {
+        42: TopicBinding(
+            topic_id=42,
+            tmux_session="ccmux",
+            group_chat_id=-100,
+            bound_at="2026-05-13T00:00:00Z",
+        ),
+    }
+    text, _kb = picker._build_picker(
+        core_bindings=core,
+        topic_bindings=topic_bindings,
+        filter_mode="all",
+        current_topic_id=42,
+    )
+    assert text.startswith("Currently bound to: ccmux\n\n")
+    assert "Pick a tmux session:" in text
+
+
+def test_build_picker_header_dead_binding() -> None:
+    """When current topic is bound but session ended in core, header has '(no longer live)' suffix."""
+    from ccmux_core_telegram.binding import TopicBinding
+
+    core = {
+        # Present in core but ended (current_session_id=None).
+        "ccmux": {"current_session_id": None, "pane_id": "%0"},
+    }
+    topic_bindings = {
+        42: TopicBinding(
+            topic_id=42,
+            tmux_session="ccmux",
+            group_chat_id=-100,
+            bound_at="2026-05-13T00:00:00Z",
+        ),
+    }
+    text, _kb = picker._build_picker(
+        core_bindings=core,
+        topic_bindings=topic_bindings,
+        filter_mode="all",
+        current_topic_id=42,
+    )
+    assert text.startswith("Currently bound to: ccmux (no longer live)\n\n")
+
+
+def test_build_picker_no_header_when_unbound() -> None:
+    """When current topic has no binding, no header is prepended (regression guard)."""
+    core = {
+        "ccmux": {"current_session_id": "sid", "pane_id": "%0"},
+    }
+    text, _kb = picker._build_picker(
+        core_bindings=core,
+        topic_bindings={},  # current topic 42 not in bindings
+        filter_mode="all",
+        current_topic_id=42,
+    )
+    assert "Currently bound to:" not in text
+    assert text == "Pick a tmux session:"
