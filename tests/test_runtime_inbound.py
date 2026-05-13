@@ -67,3 +67,29 @@ async def test_inbound_dead_topic_replies_hint(
     update.message.reply_text.assert_called_once()
     args, _kwargs = update.message.reply_text.call_args
     assert "dead" in args[0].lower() or "rebind" in args[0].lower()
+
+
+async def test_inbound_dead_error_replies_hint(
+    state_dir, fake_application, fake_backend, make_update_fixture
+) -> None:
+    """DeadError from send_prompt is caught and replied with the dead-hint."""
+    from ccmux_core.error import DeadError
+
+    FakeBackendClass = fake_backend
+
+    class _DeadOnSend(FakeBackendClass):
+        async def send_prompt(self, text: str) -> None:
+            raise DeadError("test")
+
+    fake = _DeadOnSend(msgs=[])
+    state = RuntimeState()
+    state.backend_handles[42] = fake
+    fake_application.bot_data["runtime"] = state
+
+    update = make_update_fixture(text="hello", message_thread_id=42)
+    context = type("Ctx", (), {"application": fake_application})()
+    await runtime.on_inbound_text(update, context)
+
+    update.message.reply_text.assert_called_once()
+    args, _kwargs = update.message.reply_text.call_args
+    assert "dead" in args[0].lower() or "rebind" in args[0].lower()
