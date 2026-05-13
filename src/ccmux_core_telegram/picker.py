@@ -32,6 +32,15 @@ def _build_picker(
     sessions are labeled with their owning topic_id; the picker
     callback distinguishes pick vs steal by callback_data prefix.
     """
+    # Header: if current topic is already bound, show binding state above picker.
+    header = ""
+    current = topic_bindings.get(current_topic_id)
+    if current is not None:
+        entry = core_bindings.get(current.tmux_session)
+        is_live = entry is not None and entry.get("current_session_id") is not None
+        suffix = "" if is_live else " (no longer live)"
+        header = f"Currently bound to: {current.tmux_session}{suffix}\n\n"
+
     # Compute live sessions
     live_sessions = [
         (name, entry)
@@ -64,7 +73,7 @@ def _build_picker(
             if filter_mode != "all"
             else "No live claude sessions."
         )
-        return text, InlineKeyboardMarkup(rows)
+        return header + text, InlineKeyboardMarkup(rows)
 
     for name, _entry, is_bound in filtered:
         if is_bound:
@@ -80,7 +89,7 @@ def _build_picker(
             cb = f"{PICK_PREFIX}{name}"
         rows.append([InlineKeyboardButton(label, callback_data=cb)])
 
-    return "Pick a tmux session:", InlineKeyboardMarkup(rows)
+    return header + "Pick a tmux session:", InlineKeyboardMarkup(rows)
 
 
 def _tab_row(active: FilterMode) -> list[InlineKeyboardButton]:
