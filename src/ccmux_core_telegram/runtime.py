@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 from ccmux_core import Backend
 from ccmux_core.bindings import BindingsTracker
+from ccmux_core.error import DeadError
 from ccmux_core.state import Dead
 
 logger = logging.getLogger(__name__)
@@ -147,8 +148,13 @@ async def on_inbound_text(update, context) -> None:
 
     if topic_id in state.backend_handles:
         b = state.backend_handles[topic_id]
-        await b.send_prompt(msg.text)
-        logger.debug("inbound: topic=%d text=%r", topic_id, msg.text)
+        try:
+            await b.send_prompt(msg.text)
+            logger.debug("inbound: topic=%d text=%r", topic_id, msg.text)
+        except DeadError:
+            await msg.reply_text(
+                "Session is dead. /start to rebind to a different session."
+            )
         return
 
     if binding.get(topic_id) is None:
