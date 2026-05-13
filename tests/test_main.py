@@ -31,4 +31,6 @@ def test_scrub_sensitive_env(monkeypatch) -> None:
     monkeypatch.setenv("CCMUX_CORE_TELEGRAM_ALLOWED_USERS", "1,2,3")
     main.scrub_sensitive_env()
     assert "TELEGRAM_BOT_TOKEN" not in os.environ
-    assert "CCMUX_CORE_TELEGRAM_ALLOWED_USERS" not in os.environ
+    # ALLOWED_USERS is NOT scrubbed — picker callback handlers need it at
+    # runtime since PTB CallbackQueryHandler doesn't support filters.User.
+    assert os.environ["CCMUX_CORE_TELEGRAM_ALLOWED_USERS"] == "1,2,3"

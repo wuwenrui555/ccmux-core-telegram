@@ -23,7 +23,12 @@ logger = logging.getLogger(__name__)
 SENSITIVE_VARS: frozenset[str] = frozenset(
     {
         "TELEGRAM_BOT_TOKEN",
-        "CCMUX_CORE_TELEGRAM_ALLOWED_USERS",
+        # Note: CCMUX_CORE_TELEGRAM_ALLOWED_USERS is deliberately NOT
+        # scrubbed. Picker callback handlers (on_pick/on_steal/on_filter)
+        # call config.allowed_users() at runtime to gate by user_id, since
+        # PTB's CallbackQueryHandler does not support declarative
+        # filters.User(). User IDs are not tokens — leaking them to
+        # subprocesses is not a privacy concern.
     }
 )
 
