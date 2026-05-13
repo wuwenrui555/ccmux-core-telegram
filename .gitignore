@@ -21,3 +21,9 @@ htmlcov/
 
 # uv
 uv.lock
+
+# Secrets / runtime state — never commit
+.env
+*.env
+ccmux-core-telegram.log
+topic_bindings.json
